@@ -10,6 +10,12 @@ const jwt = require('jsonwebtoken')
 
 // Register route
 router.post("/register",async (req,res)=>{
+    const user = await User.find({email:req.body.email})
+   if (!user) {
+     res.status(401).json("user already exist")
+
+       
+   } else {
     const newUser = new User({
         username:req.body.username,
         email:req.body.email,
@@ -20,12 +26,22 @@ router.post("/register",async (req,res)=>{
     })
 
     try{
+        
+       
+
         const savedUser = await newUser.save()
-        res.status(201).json(savedUser)
+        const {password,...others} = savedUser._doc
+
+        res.status(201).json(others)
     }catch(err){
-        res.status(500).json(err)
+        res.status(500).json({err:err.message})
     }
 
+   }
+ 
+
+
+   
 })
 
 // Login route

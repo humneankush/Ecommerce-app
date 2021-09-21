@@ -4,9 +4,14 @@ const User = require("../models/User")
 
 const CryptoJs = require("crypto-js")
 
+const {verifyToken,
+    verifyTokenAndAdmin,
+    verifyTokenAndAuthorization
+    } = require("./verifyToken")
+
 // Update User
 
-router.put("/:id",async (req,res)=>{
+    router.put("/:id", verifyTokenAndAuthorization,async (req,res)=>{
     if(req.body.password){
         req.body.password = CryptoJs.AES.encrypt(
             req.body.password,
@@ -30,11 +35,21 @@ router.put("/:id",async (req,res)=>{
 })
 
 // Delete User
+router.delete("/:id",verifyTokenAndAuthorization,async (req,res)=>{
+    try{
+        const user = await User.findByIdAndDelete(req.params.id)
+       ! user && res.status(400).json("user not found")
+       res.status(200).json("user has been deleted")    
+
+    }catch(err){
+        res.status(500).json(err)
+    }
+})
 
 
 // get User
 
-router.get("/:id",async (req,res)=>{
+router.get("/find/:id",verifyTokenAndAdmin,async (req,res)=>{
         try {
             const user = await User.findById(req.params.id)
     
@@ -48,7 +63,7 @@ router.get("/:id",async (req,res)=>{
 
 
 // get all user User
-router.get("/",async(req,res)=>{
+router.get("/",verifyTokenAndAdmin,async(req,res)=>{
     const query = req.query.new;
 
     try {
@@ -67,8 +82,30 @@ router.get("/",async(req,res)=>{
 
 // get User stats
 
-
-// Update User
-
+router.get("/stats",verifyTokenAndAdmin,  async (req, res) => {
+    const date = new Date();
+    const lastYear = new Date(date.setFullYear(date.getFullYear() - 1));
+  
+    try {
+      const data = await User.aggregate([
+        { $match: { createdAt: { $gte: lastYear } } },
+        {
+          $project: {
+            month: { $month: "$createdAt" },
+          },
+        },
+        {
+          $group: {
+            _id: "$month",
+            total: { $sum: 1 },
+          },
+        },
+      ]);
+      res.status(200).json(data)
+    } catch (err) {
+      res.status(500).json(err);
+    }
+  });
+  
 
 module.exports=router
